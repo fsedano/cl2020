@@ -1,4 +1,5 @@
 version: '3'
+services:
   yang-explorer:
     image: hellt/yangexplorer-docker
     volumes:
