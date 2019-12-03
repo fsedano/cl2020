@@ -7,10 +7,9 @@ import json
 import requests
 import os
 import urllib3
-import base64
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
-from netaddr import EUI, mac_cisco
+from netaddr import EUI, mac_cisco, mac_unix_expanded
 
 controller = {
     "ip":"35.180.30.10",
@@ -23,7 +22,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class WLC:
     def __init__(self, ip, user, password):
-        print("Doing init")
         self.controller_ip = ip
         self.controller_user = user
         self.controller_password = password
@@ -35,29 +33,42 @@ class WLC:
             'cache-control': "no-cache"
         }
         self.baseurl = f"https://{self.controller_ip}/restconf/data/"
-        self.url = f"https://{self.controller_ip}/restconf/data/Cisco-IOS-XE-wireless-ap-cfg:ap-cfg-data/ap-tags/ap-tag/"
+        self.ap_tag_url = self.baseurl + \
+            "/Cisco-IOS-XE-wireless-ap-cfg:ap-cfg-data/ap-tags/ap-tag/"
+        self.capwap_data_url = self.baseurl + \
+            "Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/capwap-data"
 
-        #self.url =  f"https://{self.controller_ip}/restconf/data/Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/capwap-data"
-                               #https://35.180.30.10/restconf/data/Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/radio-oper-data/wtp-mac
-        print(f"I have been born and url is {self.url}")
 
     def process_ap(self, ap_info, inventory_info):
-        print(f"Processing AP:\n info={ap_info}\n inventory={inventory_info}")
+        print(f"Changing AP MAC {ap_info['MAC']} to have tag {inventory_info['tag']}")
+        payload = {"ap-tag": 
+            {"ap-mac":ap_info['MAC'], 
+            "site-tag":inventory_info['tag']}
+        }
+        print(f"Sending payload to AP TAG url: {json.dumps(payload)}")
+
+        try:
+            response = requests.request("PATCH",
+                    self.ap_tag_url,
+                    headers=self.headers,
+                    verify=False,
+                    auth=self.controller_auth,
+                    data=json.dumps(payload))
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        else:
+            print(f"Success!")
 
 
-    def _change_policy_tag_payload(self, payload, mac, new_policy_tag):
-        _payload = json.loads(payload.text)
-        print(_payload)
-        for entry in _payload['Cisco-IOS-XE-wireless-ap-cfg:ap-tag']:
-            if entry['ap-mac'] == mac:
-                entry['policy-tag'] = new_policy_tag
-        return json.dumps(_payload)
 
     def get_joined_aps(self):
         try:
-            url = self.baseurl + "Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/capwap-data"
+            print("Sending GET request for CAPWAP data")
             response = requests.request("GET",
-                url,
+                self.capwap_data_url,
                 headers=self.headers,
                 verify=False,
                 auth=self.controller_auth)
@@ -67,33 +78,18 @@ class WLC:
         except Exception as err:
             print(f'Other error occurred: {err}')
         else:
-            print(f"Success!")
-            #print(f"Data; {response.text}")
+            print("Success!")
+            #print(f"Got data from controller {response.text}")
             payload = response.json()['Cisco-IOS-XE-wireless-access-point-oper:capwap-data']
             for entry in payload:
-                MAC = EUI(entry['wtp-mac'], dialect=mac_cisco)
+                ethernet_mac = entry["device-detail"]["static-info"]["board-data"]["wtp-enet-mac"]
                 serial = entry["device-detail"]["static-info"]["board-data"]["wtp-serial-num"]
+                MAC = EUI(ethernet_mac, dialect=mac_unix_expanded)
                 self.ap_list[serial] = {
                     "name":entry["name"],
                     "MAC":str(MAC)
                 }
-            #print(self.ap_list)
-            return self.ap_list
-
-    def get_ap_sn(self, mac):
-        try:
-            response = requests.request("GET",
-                self.url,
-                headers=self.headers,
-                verify=False,
-                auth=HTTPBasicAuth('lab', 'lab'))
-            response.raise_for_status()
-        except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')  # Python 3.6
-        except Exception as err:
-            print(f'Other error occurred: {err}')  # Python 3.6
-        else:
-            print(f"Success!. Data is {response.text}")
+        return self.ap_list
 
 class Inventory:
     def __init__(self, filename):
@@ -104,13 +100,15 @@ class Inventory:
             data = csv.reader(f, delimiter=',')
             next(data, None)
             for row in data:
-                serial = row[0]
-                name = row[1]
-                tag = row[2]
-                self.inventory_data[serial] = {
-                    "name":name,
-                    "tag":tag
-                }
+                print(row)
+                if len(row) > 1:
+                    serial = row[0]
+                    name = row[1]
+                    tag = row[2]
+                    self.inventory_data[serial] = {
+                        "name":name,
+                        "tag":tag
+                    }
             return self.inventory_data
 
 
@@ -120,12 +118,10 @@ class Inventory:
 wlc = WLC(controller["ip"],
     controller["user"],
     controller["password"])
-#wlc.get_ap_sn(ap)
+
 aps = wlc.get_joined_aps()
-data = Inventory('AP_Inventory.csv')
-inventory = data.read()
+inventory = Inventory('AP_Inventory.csv').read()
+
 for ap_serial in aps:
     if ap_serial in inventory:
         wlc.process_ap(aps[ap_serial], inventory[ap_serial])
-    else:
-        print("OOPS")
