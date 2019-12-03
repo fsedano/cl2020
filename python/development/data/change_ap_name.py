@@ -41,6 +41,10 @@ class WLC:
                                #https://35.180.30.10/restconf/data/Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/radio-oper-data/wtp-mac
         print(f"I have been born and url is {self.url}")
 
+    def process_ap(self, ap_info, inventory_info):
+        print(f"Processing AP:\n info={ap_info}\n inventory={inventory_info}")
+
+
     def _change_policy_tag_payload(self, payload, mac, new_policy_tag):
         _payload = json.loads(payload.text)
         print(_payload)
@@ -73,7 +77,8 @@ class WLC:
                     "name":entry["name"],
                     "MAC":str(MAC)
                 }
-            print(self.ap_list)
+            #print(self.ap_list)
+            return self.ap_list
 
     def get_ap_sn(self, mac):
         try:
@@ -89,17 +94,25 @@ class WLC:
             print(f'Other error occurred: {err}')  # Python 3.6
         else:
             print(f"Success!. Data is {response.text}")
-        #d = payload.json()['Cisco-IOS-XE-wireless-access-point-oper:capwap-data']
-        #for ap in d:
-        #    serial_number = ap['device-detail']['static-info']['board-data']['wtp-serial-num']
-        #    print(serial_number)
 
-def readcsv():
-    with open("AP_Inventory.csv", encoding='utf-8') as f:
-        data = csv.reader(f, delimiter=',')
-        next(data, None)
-        for row in data:
-            print(row)
+class Inventory:
+    def __init__(self, filename):
+        self.filename = filename
+        self.inventory_data = {}
+    def read(self):
+        with open("AP_Inventory.csv", encoding='utf-8') as f:
+            data = csv.reader(f, delimiter=',')
+            next(data, None)
+            for row in data:
+                serial = row[0]
+                name = row[1]
+                tag = row[2]
+                self.inventory_data[serial] = {
+                    "name":name,
+                    "tag":tag
+                }
+            return self.inventory_data
+
 
 
 
@@ -108,4 +121,11 @@ wlc = WLC(controller["ip"],
     controller["user"],
     controller["password"])
 #wlc.get_ap_sn(ap)
-wlc.get_joined_aps()
+aps = wlc.get_joined_aps()
+data = Inventory('AP_Inventory.csv')
+inventory = data.read()
+for ap_serial in aps:
+    if ap_serial in inventory:
+        wlc.process_ap(aps[ap_serial], inventory[ap_serial])
+    else:
+        print("OOPS")
