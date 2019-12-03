@@ -1,10 +1,9 @@
 ncclient
 netconf-console
-cisco-gnmi
 requests
 xmltodict
 pexpect
 dictdiffer
 texttable
 lxml
-ncclient
+netaddr

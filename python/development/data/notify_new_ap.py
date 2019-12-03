@@ -16,15 +16,6 @@ payload = """
   <access-point-oper-data xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-wireless-access-point-oper"><capwap-data><ip-addr/></capwap-data></access-point-oper-data>
 </filter>
 """
-def remove_from_env(var):
-    if var in os.environ:
-        os.environ.pop(var)
-
-def remove_proxy():
-    remove_from_env('HTTP_PROXY')
-    remove_from_env('HTTPS_PROXY')
-    remove_from_env('http_proxy')
-    remove_from_env('https_proxy')
 
 def notify_changes(currentaps):
     text = f"There is a change on the access point list. Now we have {len(currentaps)} access points."
@@ -50,7 +41,6 @@ host = "10.51.65.10"
 port = "830"
 username="lab"
 password = "lab"
-remove_proxy()
 
 currentaps = []
 skipnotify = True
