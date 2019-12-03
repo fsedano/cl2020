@@ -10,6 +10,7 @@ import urllib3
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
 from netaddr import EUI, mac_cisco, mac_unix_expanded
+import logging
 
 controller = {
     "ip":"35.180.30.10",
@@ -17,7 +18,7 @@ controller = {
     "password":"lab"
 }
 
-
+logging.basicConfig(level=logging.INFO, format="%(asctime)-15s (%(levelname)s) %(message)s")
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class WLC:
@@ -40,12 +41,15 @@ class WLC:
 
 
     def process_ap(self, ap_info, inventory_info):
-        print(f"Changing AP MAC {ap_info['MAC']} to have tag {inventory_info['tag']}")
+        logging.info(f"Changing AP MAC {ap_info['MAC']} to have tag {inventory_info['tag']}")
+
+        # Create site tag
+        self.create_site_tag(inventory_info['tag'])
         payload = {"ap-tag": 
             {"ap-mac":ap_info['MAC'], 
             "site-tag":inventory_info['tag']}
         }
-        print(f"Sending payload to AP TAG url: {json.dumps(payload)}")
+        logging.info(f"Sending payload to AP TAG url: {json.dumps(payload)}")
 
         try:
             response = requests.request("PATCH",
@@ -56,17 +60,41 @@ class WLC:
                     data=json.dumps(payload))
             response.raise_for_status()
         except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')
+            logging.error(f'HTTP error occurred: {http_err}')
         except Exception as err:
-            print(f'Other error occurred: {err}')
+            logging.exception(f'Other error occurred: {err}')
         else:
-            print(f"Success!")
+            logging.info(f"Success!")
 
 
+    def create_site_tag(self, site_tag_name):
+        logging.info(f"Creating site tag {site_tag_name}")
+        payload = {"site-tag-config": {
+                "site-tag-name":site_tag_name,
+                "is-local-site":"false"
+                }
+        }
+        url = self.baseurl + "Cisco-IOS-XE-wireless-site-cfg:site-cfg-data/site-tag-configs/site-tag-config/"
+        logging.info(f"Sending payload to site tag config url: {json.dumps(payload)}")
+
+        try:
+            response = requests.request("PATCH",
+                    url,
+                    headers=self.headers,
+                    verify=False,
+                    auth=self.controller_auth,
+                    data=json.dumps(payload))
+            response.raise_for_status()
+        except HTTPError as http_err:
+            logging.error(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            logging.exception(f'Other error occurred: {err}')
+        else:
+            logging.info(f"Success!")
 
     def get_joined_aps(self):
         try:
-            print("Sending GET request for CAPWAP data")
+            logging.info("Sending GET request for CAPWAP data")
             response = requests.request("GET",
                 self.capwap_data_url,
                 headers=self.headers,
@@ -74,21 +102,28 @@ class WLC:
                 auth=self.controller_auth)
             response.raise_for_status()
         except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')
+            logging.error(f'HTTP error occurred: {http_err}')
         except Exception as err:
-            print(f'Other error occurred: {err}')
+            logging.exception(f'Other error occurred: {err}')
         else:
-            print("Success!")
-            #print(f"Got data from controller {response.text}")
-            payload = response.json()['Cisco-IOS-XE-wireless-access-point-oper:capwap-data']
-            for entry in payload:
-                ethernet_mac = entry["device-detail"]["static-info"]["board-data"]["wtp-enet-mac"]
-                serial = entry["device-detail"]["static-info"]["board-data"]["wtp-serial-num"]
-                MAC = EUI(ethernet_mac, dialect=mac_unix_expanded)
-                self.ap_list[serial] = {
-                    "name":entry["name"],
-                    "MAC":str(MAC)
-                }
+            logging.debug(f"Got data from controller {response.text}")
+            try:
+                json_payload = response.json()
+                capwap_data = json_payload['Cisco-IOS-XE-wireless-access-point-oper:capwap-data']
+                for entry in capwap_data:
+                    ethernet_mac = entry["device-detail"]["static-info"]["board-data"]["wtp-enet-mac"]
+                    serial = entry["device-detail"]["static-info"]["board-data"]["wtp-serial-num"]
+                    MAC = EUI(ethernet_mac, dialect=mac_unix_expanded)
+                    self.ap_list[serial] = {
+                        "MAC":str(MAC)
+                    }
+            except ValueError as err:
+                logging.info(f"No data was returned")
+            except Exception as err:
+                logging.exception(f"Other error: {err}")
+            else:
+                logging.info(f"Success!. {len(self.ap_list)} APs joined")
+
         return self.ap_list
 
 class Inventory:
@@ -100,13 +135,10 @@ class Inventory:
             data = csv.reader(f, delimiter=',')
             next(data, None)
             for row in data:
-                print(row)
-                if len(row) > 1:
+                if len(row) > 0:
                     serial = row[0]
-                    name = row[1]
-                    tag = row[2]
+                    tag = row[1]
                     self.inventory_data[serial] = {
-                        "name":name,
                         "tag":tag
                     }
             return self.inventory_data
