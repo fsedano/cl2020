@@ -1,18 +1,16 @@
-from lxml import etree
-import lxml.etree as ET
-from ncclient import manager
-from ncclient.xml_ import to_ele
 import requests
 import json
 import logging
 import urllib3
 from requests.exceptions import HTTPError
 
+API_ENDPOINT = "https://mailb.inf-pronet.com:5000/call"
 
 class PhoneCaller:
     def __init__(self, phone_number):
         self.phone_number = phone_number
         self.notified_clients = set()
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def notify_changes(self, current_clients):
         if current_clients == self.notified_clients:
@@ -33,7 +31,7 @@ class PhoneCaller:
         headers = {
             'Content-Type': "application/json"
         }
-        API_ENDPOINT = "https://mailb.inf-pronet.com:5000/call"
+
         try:
             response = requests.request("POST", url = API_ENDPOINT, data = json.dumps(data), verify=False, headers=headers)
             response.raise_for_status()

@@ -4,12 +4,10 @@ from lxml import etree
 import lxml.etree as ET
 from ncclient import manager
 from ncclient.xml_ import to_ele
-import requests
-import json
 import logging
-import urllib3
-from requests.exceptions import HTTPError
-from phone_caller import PhoneCaller
+
+from phonecaller import PhoneCaller
+
 
 controller = {
     "ip":"35.180.30.10",
@@ -29,7 +27,6 @@ filter = "/wireless-client-oper:client-oper-data/sisf-db-mac/ipv4-binding"
 rpc = rpc % (filter)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s (%(levelname)s) %(message)s")
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 
@@ -40,7 +37,6 @@ def is_delete(root):
     return False
 
 currentaps = set()
-last_notified_aps = set()
 
 #phone = PhoneCaller('+34671167751')
 phone = PhoneCaller('')
