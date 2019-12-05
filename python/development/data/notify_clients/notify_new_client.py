@@ -22,6 +22,7 @@ rpc = """
     <yp:dampening-period>0</yp:dampening-period>
 </establish-subscription>
 """
+
 filter = "/wireless-client-oper:client-oper-data/sisf-db-mac/ipv4-binding"
 
 rpc = rpc % (filter)
@@ -38,25 +39,26 @@ def is_delete(root):
 
 currentaps = set()
 
-#phone = PhoneCaller('+34671167751')
-phone = PhoneCaller('')
+phone = PhoneCaller('+34671167751')
+#phone = PhoneCaller('')
 
-if __name__ == '__main__':
-    with manager.connect(host=controller['ip'],
-                         port=830,
-                         username=controller['user'],
-                         password=controller['password'],
-                         hostkey_verify=False) as m:
+with manager.connect(host=controller['ip'],
+                        port=830,
+                        username=controller['user'],
+                        password=controller['password'],
+                        hostkey_verify=False) as m:
 
-        response = m.dispatch(to_ele(rpc))
-        logging.info("Waiting for notifications")
-        while True:
-            n = m.take_notification()
-            root = ET.fromstring(n.notification_xml.encode("utf-8"))
-            delete = is_delete(root)
-            for x in root.iter('{http://cisco.com/ns/yang/Cisco-IOS-XE-wireless-client-oper}ip-addr'):
-                if not delete:
-                    currentaps.add(x.text)
-                else:
-                    currentaps.discard(x.text)
-            phone.notify_changes(currentaps)
+    response = m.dispatch(to_ele(rpc))
+    logging.info("Waiting for notifications")
+
+    while True:
+        n = m.take_notification()
+        root = ET.fromstring(n.notification_xml.encode("utf-8"))
+        delete = is_delete(root)
+        for x in root.iter('{http://cisco.com/ns/yang/Cisco-IOS-XE-wireless-client-oper}ip-addr'):
+            if delete:
+                currentaps.discard(x.text)
+            else:
+                currentaps.add(x.text)
+
+        phone.notify_changes(currentaps)

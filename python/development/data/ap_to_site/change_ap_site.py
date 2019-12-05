@@ -3,19 +3,11 @@
 Code to provision APs based on spreadsheet data
 """
 
-import json
-import requests
-import os
-import urllib3
-from requests.auth import HTTPBasicAuth
-from requests.exceptions import HTTPError
-from netaddr import EUI, mac_cisco, mac_unix_expanded
 import logging
 from readinventory import Inventory
 from wirelesscontroller import WLC
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s (%(levelname)s) %(message)s")
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 controller = {
