@@ -1,4 +1,34 @@
+"""
+This file implements the wirelesscontroller class.
 
+Three method are available:
+
+-----
+set_ap_tag(ap_mac, ap_tag)
+
+This method sets an AP tag to the given AP MAC by calling the REST resource:
+/Cisco-IOS-XE-wireless-ap-cfg:ap-cfg-data/ap-tags/ap-tag/
+
+It returns the REST response
+-----
+create_site_tag(tag)
+
+This method creates the given site tag, and sets the 'is-local-site' flag of it to TRUE.
+It returns the REST response
+-----
+get_joined_aps()
+
+This method queries the controller for the list of joined APs using the REST resource:
+Cisco-IOS-XE-wireless-access-point-oper:access-point-oper-data/capwap-data
+
+It returns a dictionary of joined APs with the following format:
+
+{
+    'FGL2115B015': {'MAC': '00:2c:c8:8b:31:b0'},
+    'FGL39392819': {'MAC': '00:2c:c8:8a:11:a0'}
+}
+
+"""
 import requests
 import urllib3
 from requests.auth import HTTPBasicAuth
@@ -7,7 +37,7 @@ from netaddr import EUI, mac_unix_expanded
 import logging
 
 
-class WLC:
+class wirelesscontroller:
     def __init__(self, ip, user, password):
         self.controller_ip = ip
         self.controller_user = user
@@ -44,24 +74,23 @@ class WLC:
         return response
 
 
+    def set_ap_tag(self, ap_mac, ap_tag):
+        logging.info(f"Changing AP MAC {ap_mac} to have tag {ap_tag}")
 
-    def process_ap(self, ap_info, inventory_info):
-        logging.info(f"Changing AP MAC {ap_info['MAC']} to have tag {inventory_info['tag']}")
-
-        # Create site tag
-        self.create_site_tag(inventory_info['tag'])
         payload = {"ap-tag": 
-            {"ap-mac":ap_info['MAC'], 
-            "site-tag":inventory_info['tag']}
+            {"ap-mac":ap_mac, 
+            "site-tag":ap_tag}
         }
         resource = "/Cisco-IOS-XE-wireless-ap-cfg:ap-cfg-data/ap-tags/ap-tag/"
-        self.__execute_method(method="PATCH", resource=resource, payload=payload)
+        response = self.__execute_method(method="PATCH", resource=resource, payload=payload)
+        return response
 
 
-    def create_site_tag(self, site_tag_name):
-        logging.info(f"Creating site tag {site_tag_name}")
+    def create_site_tag(self, ap_tag):
+
+        logging.info(f"Creating site tag {ap_tag}")
         payload = {"site-tag-config": {
-                "site-tag-name":site_tag_name,
+                "site-tag-name":ap_tag,
                 "is-local-site":"false"
                 }
         }
