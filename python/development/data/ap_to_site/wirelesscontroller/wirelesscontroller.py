@@ -73,7 +73,7 @@ class C9800:
     #### Add the code for method set_site_tags here ####
 
 
-    #### Example methods similar to the ones you will code
+    #### Example method similar to the one you will code
     def get_site_tags_example(self):
         resource = "Cisco-IOS-XE-wireless-site-cfg:site-cfg-data/site-tag-configs/site-tag-config"
 
@@ -83,6 +83,7 @@ class C9800:
         print(data)
 
 
+    #### Example method similar to the one you will code
     def set_site_tag_example(self, ap_tag):
         logging.info(f"Creating the site tag {ap_tag}")
 
@@ -92,6 +93,7 @@ class C9800:
                 {'site-tag-name': ap_tag, 'is-local-site': False}
                 ]
         }
+        self.__execute_REST(method="PATCH", resource=resource, payload=data)
 
 
     def set_ap_tag(self, ap_mac, ap_tag):
