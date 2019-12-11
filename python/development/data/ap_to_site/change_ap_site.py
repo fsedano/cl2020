@@ -9,10 +9,10 @@ from wirelesscontroller import C9800
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s (%(levelname)s) %(message)s")
 
-### Replace IP with the one for your controller
+### Replace IP with the one for your controller and username with your pod username.
 controller = {
-    "ip":"<your_ip_address>",
-    "user":"admin",
+    "ip":"<your_controller_private_ip>",
+    "user":"podx",
     "password":"Vimlab123@"
 }
 

@@ -92,26 +92,6 @@ class C9800:
                 {'site-tag-name': ap_tag, 'is-local-site': False}
                 ]
         }
-    def get_site_tags(self):
-        resource = "Cisco-IOS-XE-wireless-site-cfg:site-cfg-data/site-tag-configs/site-tag-config"
-
-        result = self.__execute_REST(method="GET", resource=resource)
-        data = result.json()
-        print("The list of tags is:")
-        print(data)
-
-
-    def set_site_tag(self, ap_tag):
-        logging.info(f"Creating the site tag {ap_tag}")
-
-        resource = "Cisco-IOS-XE-wireless-site-cfg:site-cfg-data/site-tag-configs/site-tag-config"
-
-        data = {'Cisco-IOS-XE-wireless-site-cfg:site-tag-config': [
-                {'site-tag-name': ap_tag, 'is-local-site': False}
-                ]
-        }
-    
-        self.__execute_REST(method="PATCH", resource=resource, payload=data)
 
 
     def set_ap_tag(self, ap_mac, ap_tag):
@@ -144,7 +124,7 @@ class C9800:
         except Exception as err:
             logging.exception(f"Other error: {err}")
         else:
-            logging.info(f"Success!. {len(self.ap_list)} APs joined")
+            logging.info(f"Success! {len(self.ap_list)} APs joined")
 
         return self.ap_list
 
