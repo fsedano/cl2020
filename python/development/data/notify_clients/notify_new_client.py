@@ -4,17 +4,26 @@ from lxml import etree
 import lxml.etree as ET
 from ncclient import manager
 from ncclient.xml_ import to_ele
-import logging
 
 from phonecaller import PhoneCaller
+import xmlutils
 
+#### Edit the IP and username below to match your controller
 
 controller = {
-    "ip":"35.180.30.10",
-    "user":"lab",
-    "password":"lab"
+    "ip":"<your controller private IP address>",
+    "user":"<your pod controller username>",
+    "password":"VimLab123@"
 }
 
+
+#### Enter the phone number to be notified - International format
+phone_number = "+4112345678"
+
+#### XPATH to monitor for changes
+filter = "<enter your XPATH HERE>"
+
+#### The generic NETCONF notification filter
 rpc = """
 <establish-subscription xmlns="urn:ietf:params:xml:ns:yang:ietf-event-notifications" xmlns:yp="urn:ietf:params:xml:ns:yang:ietf-yang-push">
     <stream>yp:yang-push</stream>
@@ -23,24 +32,17 @@ rpc = """
 </establish-subscription>
 """
 
-filter = "/wireless-client-oper:client-oper-data/sisf-db-mac/ipv4-binding"
 
+# This will replace the '%s' on the rpc with the 'filter' variable
 rpc = rpc % (filter)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)-15s (%(levelname)s) %(message)s")
+# Initialize an empty set (similar to an array) to hold
+# the list of clients currently connected to our controller
+currentclients = set()
 
+# Create our PhoneCaller object, and pass the phone number to it
+phone = PhoneCaller(phone_number)
 
-
-def is_delete(root):
-    for x in root.iter('{urn:ietf:params:xml:ns:yang:ietf-yang-patch}operation'):
-        if x.text == 'delete':
-            return True
-    return False
-
-currentaps = set()
-
-phone = PhoneCaller('+34671167751')
-#phone = PhoneCaller('')
 
 with manager.connect(host=controller['ip'],
                         port=830,
@@ -48,17 +50,31 @@ with manager.connect(host=controller['ip'],
                         password=controller['password'],
                         hostkey_verify=False) as m:
 
+    ### Subscribe to the NETCONF notification
+    print(f"Sending subscription: {rpc}")
     response = m.dispatch(to_ele(rpc))
-    logging.info("Waiting for notifications")
 
     while True:
+        #  This will block until the controller notifies us
+        print("*************************")
+        print("Waiting for notifications")
+        print("*************************")
         n = m.take_notification()
-        root = ET.fromstring(n.notification_xml.encode("utf-8"))
-        delete = is_delete(root)
-        for x in root.iter('{http://cisco.com/ns/yang/Cisco-IOS-XE-wireless-client-oper}ip-addr'):
-            if delete:
-                currentaps.discard(x.text)
-            else:
-                currentaps.add(x.text)
+        print(f"Received notification!\n")
 
-        phone.notify_changes(currentaps)
+        # Convert the notification into an XML object so we can parse it
+        root = ET.fromstring(n.notification_xml.encode("utf-8"))
+        print(f"XML is {ET.tostring(root, pretty_print=True).decode()}")
+
+        # Go thru the list of returned client IP addresses and for each client IP...
+        for client_ip in root.iter('{http://cisco.com/ns/yang/Cisco-IOS-XE-wireless-client-oper}ip-addr'):
+            if xmlutils.is_delete(root):
+                # If the operation was a deletion, remove the client IP from the list
+                currentclients.discard(client_ip.text)
+            else:
+                # Else, add the client IP to the list
+                currentclients.add(client_ip.text)
+
+        # Now our list is updated. We send it to our phone notifier object and wait again
+        # to be called from the controller on next change
+        phone.notify_changes(currentclients)

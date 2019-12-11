@@ -1,14 +1,15 @@
 import requests
-import logging
 import urllib3
 from requests.exceptions import HTTPError
 
-API_ENDPOINT = "https://mailb.inf-pronet.com:5000/call"
+## IP Address of our voice over IP service. Don't modify it
+API_ENDPOINT = "https://31.193.133.39:5000/call"
+
 
 class PhoneCaller:
     def __init__(self, phone_number):
         self.phone_number = phone_number
-        logging.info(f"Phone number is {phone_number}")
+        print(f"Phone caller initialized. Number is {phone_number}")
         self.notified_clients = set()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -16,8 +17,8 @@ class PhoneCaller:
         """
         Make a phone call, doing text to speech from the passed text parameter
         """
-        logging.info(f"Making a phone call to {self.phone_number}")
-        return
+        print(f"Making a phone call to {self.phone_number}")
+
         data = {
             "text" : text,
             "phone":self.phone_number,
@@ -35,11 +36,11 @@ class PhoneCaller:
                 headers=headers)
             response.raise_for_status()
         except HTTPError as http_err:
-            logging.error(f"Error scheduling call: {http_err}")
+            print(f"Error scheduling call: {http_err}")
         except Exception as err:
-            logging.error(f"An unexpected error happened: {err}")
+            print(f"An unexpected error happened: {err}")
         else:
-            logging.info("Sucessfully scheduled call")
+            print("Sucessfully scheduled call")
 
 
     def notify_changes(self, current_clients):
@@ -52,7 +53,7 @@ class PhoneCaller:
             return
 
         self.notified_clients = current_clients.copy()
-        logging.info(f"Notifying phone about {list(current_clients)}")
+        print(f"Notifying phone about {list(current_clients)}")
 
         text = f"There is a change on the connected clients. Now we have {len(current_clients)} clients."
 
