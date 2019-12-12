@@ -16,22 +16,21 @@ controller = {
     "password":"VimLab123@"
 }
 
-
 #### Enter the phone number to be notified - International format
-phone_number = "+4112345678"
+phone_number = "+411122334455"
 
 #### XPATH to monitor for changes
 filter = "<enter your XPATH HERE>"
 
 #### The generic NETCONF notification filter
 rpc = """
-<establish-subscription xmlns="urn:ietf:params:xml:ns:yang:ietf-event-notifications" xmlns:yp="urn:ietf:params:xml:ns:yang:ietf-yang-push">
+<establish-subscription xmlns="urn:ietf:params:xml:ns:yang:ietf-event-notifications"
+    xmlns:yp="urn:ietf:params:xml:ns:yang:ietf-yang-push">
     <stream>yp:yang-push</stream>
     <yp:xpath-filter>%s</yp:xpath-filter>
     <yp:dampening-period>0</yp:dampening-period>
 </establish-subscription>
 """
-
 
 # This will replace the '%s' on the rpc with the 'filter' variable
 rpc = rpc % (filter)
@@ -77,4 +76,9 @@ with manager.connect(host=controller['ip'],
 
         # Now our list is updated. We send it to our phone notifier object and wait again
         # to be called from the controller on next change
-        phone.notify_changes(currentclients)
+        print(f"Current client list is {list(currentclients)}")
+
+        ## Add here a call to notify_changes method of phone object
+
+
+

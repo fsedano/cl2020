@@ -55,9 +55,11 @@ class PhoneCaller:
         self.notified_clients = current_clients.copy()
         print(f"Notifying phone about {list(current_clients)}")
 
+        # Change this string if you want to change the message
         text = f"There is a change on the connected clients. Now we have {len(current_clients)} clients."
 
         if len(current_clients) > 0:
+            # Change this string if you want to change the message
             text = text + " The I P addresses of the clients are: "
             for client_ip in current_clients:
                 text = text + client_ip.replace('.', ' ') + ", "
