@@ -13,7 +13,7 @@ import xmlutils
 controller = {
     "ip":"<your controller private IP address>",
     "user":"<your pod controller username>",
-    "password":"VimLab123@"
+    "password":"Vimlab123@"
 }
 
 #### Enter the phone number to be notified - International format
